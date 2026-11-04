@@ -1,0 +1,13 @@
+{
+  "plugins": [
+    {
+      "id": "com.example.demo",
+      "name": "示例插件",
+      "version": "0.1.0",
+      "apiVersion": 2,
+      "url": "demo.dex",
+      "sha256": "686013b3157c394e96a81ad4967bde1569c8a8bf98c7cbda8670abe09ea5d37a",
+      "entryClass": "com.example.plugin.DemoPlugin"
+    }
+  ]
+}

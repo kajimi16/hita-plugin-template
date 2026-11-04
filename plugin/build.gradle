@@ -1,0 +1,100 @@
+plugins {
+    id 'com.android.library'
+    id 'kotlin-android'
+}
+
+android {
+    defaultConfig {
+        minSdkVersion 23
+        targetSdk 33
+        compileSdk 35
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions { jvmTarget = '1.8' }
+    namespace 'com.example.plugin'
+}
+
+// 插件只"看见"契约：这些类在运行时由 OH-MY-HITA 提供，
+// 所以全部用 compileOnly，不能打进插件 dex。
+dependencies {
+    compileOnly files('../libs/api-release.aar', '../libs/model-release.aar', '../libs/component-release.aar')
+    compileOnly 'androidx.fragment:fragment:1.6.2'
+    compileOnly 'androidx.lifecycle:lifecycle-livedata-core:2.8.4'
+    compileOnly 'com.google.code.gson:gson:2.8.9'
+    compileOnly "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+}
+
+def sdkDir = {
+    def props = new Properties()
+    def f = rootProject.file('local.properties')
+    if (f.exists()) f.withInputStream { props.load(it) }
+    props.getProperty('sdk.dir') ?: System.getenv('ANDROID_HOME') ?: System.getenv('ANDROID_SDK_ROOT')
+}
+
+// 构建可被市场下载的 dex：AAR -> classes.jar -> d8 -> classes.dex
+tasks.register('buildPluginDex') {
+    dependsOn 'assembleRelease'
+    group = 'plugin'
+    description = '构建插件 dex'
+
+    def outDir = layout.buildDirectory.dir('plugin-dex').get().asFile
+    doLast {
+        def sdk = sdkDir()
+        if (!sdk) throw new GradleException('找不到 Android SDK：请在 local.properties 写 sdk.dir 或设置 ANDROID_HOME')
+
+        def aar = file("$buildDir/outputs/aar/plugin-release.aar")
+        if (!aar.exists()) throw new GradleException("AAR 不存在：$aar")
+
+        outDir.deleteDir()
+        outDir.mkdirs()
+        def jar = new File(outDir, 'classes.jar')
+        new java.util.zip.ZipFile(aar).withCloseable { zip ->
+            jar.bytes = zip.getInputStream(zip.getEntry('classes.jar')).bytes
+        }
+
+        exec {
+            commandLine "$sdk/build-tools/35.0.0/d8",
+                    '--lib', "$sdk/platforms/android-35/android.jar",
+                    '--min-api', '23',
+                    '--output', outDir.absolutePath,
+                    jar.absolutePath
+        }
+        jar.delete()
+        def dex = new File(outDir, 'classes.dex')
+        println "插件 dex: ${dex.absolutePath} (${dex.length()} bytes)"
+    }
+}
+
+// 把 dex 复制到 market/ 并更新索引里的 sha256
+tasks.register('publishToMarket') {
+    dependsOn 'buildPluginDex'
+    group = 'plugin'
+    description = '生成 market/index.json + 插件 dex'
+    doLast {
+        def src = layout.buildDirectory.file('plugin-dex/classes.dex').get().asFile
+        def marketDir = rootProject.file('market')
+        marketDir.mkdirs()
+        def dest = new File(marketDir, 'demo.dex')
+        dest.bytes = src.bytes
+
+        def sha = java.security.MessageDigest.getInstance('SHA-256').digest(dest.bytes).encodeHex().toString()
+        new File(marketDir, 'index.json').text = """{
+  "plugins": [
+    {
+      "id": "com.example.demo",
+      "name": "示例插件",
+      "version": "0.1.0",
+      "apiVersion": 2,
+      "url": "demo.dex",
+      "sha256": "$sha",
+      "entryClass": "com.example.plugin.DemoPlugin"
+    }
+  ]
+}
+"""
+        println "已生成 market/index.json，sha256=$sha"
+    }
+}

@@ -1,0 +1,35 @@
+name: Build plugin dex
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Ensure SDK 35
+        run: |
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          if [ ! -d "$SDK/platforms/android-35" ]; then
+            yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0" > /dev/null
+          fi
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build dex
+        run: ./gradlew :plugin:publishToMarket
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plugin-market
+          path: market/
+          retention-days: 30
