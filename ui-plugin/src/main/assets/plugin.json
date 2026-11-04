@@ -1,0 +1,9 @@
+{
+  "id": "com.example.ui.template",
+  "name": "模板界面插件",
+  "version": "0.1.0",
+  "entryClass": "com.example.ui.TemplateUiPlugin",
+  "apiVersion": 3,
+  "composeVersion": "1.6.8",
+  "capabilities": []
+}

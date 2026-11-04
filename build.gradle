@@ -19,3 +19,51 @@ allprojects {
         }
     }
 }
+
+def sha256 = { File f ->
+    java.security.MessageDigest.getInstance('SHA-256').digest(f.bytes).encodeHex().toString()
+}
+
+// 统一发布：逻辑插件 dex + 界面插件 APK + 市场索引
+tasks.register('publishMarket') {
+    dependsOn ':plugin:buildPluginDex', ':ui-plugin:assembleDebug'
+    group = 'plugin'
+    description = '生成 market/index.json、demo.dex 与 ui-demo.apk'
+    doLast {
+        def marketDir = rootProject.file('market')
+        marketDir.mkdirs()
+
+        def dex = new File(marketDir, 'demo.dex')
+        dex.bytes = file('plugin/build/plugin-dex/classes.dex').bytes
+
+        def apk = new File(marketDir, 'ui-demo.apk')
+        apk.bytes = file('ui-plugin/build/outputs/apk/debug/ui-plugin-debug.apk').bytes
+
+        def dexSha = sha256(dex)
+        def apkSha = sha256(apk)
+        new File(marketDir, 'index.json').text = """{
+  "plugins": [
+    {
+      "id": "com.example.demo",
+      "name": "示例插件",
+      "version": "0.1.0",
+      "apiVersion": 2,
+      "url": "demo.dex",
+      "sha256": "$dexSha",
+      "entryClass": "com.example.plugin.DemoPlugin"
+    }
+  ],
+  "uiPlugins": [
+    {
+      "id": "com.example.ui.template",
+      "name": "模板界面插件",
+      "version": "0.1.0",
+      "url": "ui-demo.apk",
+      "sha256": "$apkSha"
+    }
+  ]
+}
+"""
+        println "market/index.json 已更新：demo.dex=$dexSha ui-demo.apk=$apkSha"
+    }
+}

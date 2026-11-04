@@ -1,4 +1,4 @@
-name: Build plugin dex
+name: Build plugin market
 
 on:
   push:
@@ -25,8 +25,8 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Build dex
-        run: ./gradlew :plugin:publishToMarket
+      - name: Build market artifacts
+        run: ./gradlew publishMarket
 
       - uses: actions/upload-artifact@v4
         with:

@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "hita-plugin-template"
-include ':plugin'
+include ':plugin', ':ui-plugin'

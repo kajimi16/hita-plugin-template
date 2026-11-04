@@ -67,34 +67,3 @@ tasks.register('buildPluginDex') {
         println "插件 dex: ${dex.absolutePath} (${dex.length()} bytes)"
     }
 }
-
-// 把 dex 复制到 market/ 并更新索引里的 sha256
-tasks.register('publishToMarket') {
-    dependsOn 'buildPluginDex'
-    group = 'plugin'
-    description = '生成 market/index.json + 插件 dex'
-    doLast {
-        def src = layout.buildDirectory.file('plugin-dex/classes.dex').get().asFile
-        def marketDir = rootProject.file('market')
-        marketDir.mkdirs()
-        def dest = new File(marketDir, 'demo.dex')
-        dest.bytes = src.bytes
-
-        def sha = java.security.MessageDigest.getInstance('SHA-256').digest(dest.bytes).encodeHex().toString()
-        new File(marketDir, 'index.json').text = """{
-  "plugins": [
-    {
-      "id": "com.example.demo",
-      "name": "示例插件",
-      "version": "0.1.0",
-      "apiVersion": 2,
-      "url": "demo.dex",
-      "sha256": "$sha",
-      "entryClass": "com.example.plugin.DemoPlugin"
-    }
-  ]
-}
-"""
-        println "已生成 market/index.json，sha256=$sha"
-    }
-}
