@@ -28,7 +28,7 @@ class TemplateUiPlugin : ComposeUiPlugin {
 
     override val displayName = "模板界面插件"
 
-    override val requiresApi = 3
+    override val requiresApi = 6
 
     override fun createView(context: Context, host: PluginUiHost): View =
         ComposeView(context).apply {
